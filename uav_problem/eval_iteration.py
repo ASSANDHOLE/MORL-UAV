@@ -43,7 +43,8 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
         param_list.append((param, time_step, eval_obs_map, available_devices[gpu_idx]))
         gpu_idx = (gpu_idx + 1) % gpu_count
     if num_proc > 1:
-        with Pool(num_proc) as p:
+        # ensure process is killed once finished to free GPU memory
+        with Pool(processes=num_proc, maxtasksperchild=1) as p:
             res = p.starmap(_train_and_get_info, param_list)
     else:
         res = [_train_and_get_info(*param_list[0])]
