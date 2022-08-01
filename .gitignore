@@ -33,4 +33,4 @@ MANIFEST
 
 saved_models/
 *.pkl
-*.txt
+out.txt
