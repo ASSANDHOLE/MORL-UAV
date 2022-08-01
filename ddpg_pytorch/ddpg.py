@@ -72,11 +72,9 @@ class DDPG(object):
         hard_update(self.critic_target, self.critic)
 
         # Set the directory to save the models
-        if checkpoint_dir is None:
-            self.checkpoint_dir = "./saved_models/"
-        else:
+        if checkpoint_dir is not None:
             self.checkpoint_dir = checkpoint_dir
-        os.makedirs(self.checkpoint_dir, exist_ok=True)
+            os.makedirs(self.checkpoint_dir, exist_ok=True)
         # logger.info('Saving all checkpoints to {}'.format(self.checkpoint_dir))
 
     def calc_action(self, state, action_noise=None):
@@ -160,6 +158,7 @@ class DDPG(object):
         return value_loss.item(), policy_loss.item()
 
     def save_checkpoint(self, last_timestep, replay_buffer, postfix=''):
+        assert self.checkpoint_dir is not None, "cannot save, checkpoint dir is None"
         """
         Saving the networks and all parameters to a file in 'checkpoint_dir'
 
@@ -189,6 +188,7 @@ class DDPG(object):
         """
         Returns the latest created file in 'checkpoint_dir'
         """
+        assert self.checkpoint_dir is not None, "cannot load, checkpoint dir is None"
         files = [file for file in os.listdir(self.checkpoint_dir) if (file.endswith(".pt") or file.endswith(".tar"))]
         filepaths = [os.path.join(self.checkpoint_dir, file) for file in files]
         last_file = max(filepaths, key=os.path.getctime)

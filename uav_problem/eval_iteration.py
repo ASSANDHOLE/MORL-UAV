@@ -1,19 +1,16 @@
-import multiprocessing
 import os
-import sys
 from copy import deepcopy
 from multiprocessing import Pool
 
 import gym
 import numpy as np
 import torch
-import gym_uav_my
 
+import gym_uav
 from ddpg_pytorch.ddpg import DDPG
 from ddpg_pytorch.utils.noise import OrnsteinUhlenbeckActionNoise
 from ddpg_pytorch.utils.replay_memory import ReplayMemory, Transition
 from ddpg_pytorch.wrappers.normalized_actions import NormalizedActions
-
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -57,7 +54,7 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
 
 
 def _train_and_get_info(param, time_steps, eval_obs_map, gpu_idx):
-    checkpoints_dir = 'saved_models/Multi-Objective-Uav-v0'
+    checkpoints_dir = None
     device = torch.device(f'cuda:{gpu_idx}' if torch.cuda.is_available() else 'cpu')
     # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     env = gym.make(

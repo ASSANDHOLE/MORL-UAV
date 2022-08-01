@@ -9,8 +9,8 @@ import numpy as np
 # import pygame
 from shapely.geometry import LineString, Point
 
-from gym_uav_my.env.config import NamedDict
-from gym_uav_my.env.c_functions import c_dijkstra, c_obs_dist_circle
+from gym_uav.env.config import NamedDict
+from gym_uav.env.c_functions import c_dijkstra, c_obs_dist_circle
 
 # pygame.init()
 

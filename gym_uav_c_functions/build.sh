@@ -19,7 +19,7 @@ then
       exit 0
     fi
   fi
-  path_to_dest=../gym_uav_my/env/
+  path_to_dest=../gym_uav/env/
 else
   path_to_dest=$1
 fi

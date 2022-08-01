@@ -3,9 +3,9 @@ import math
 
 import numpy as np
 
-from gym_uav_my.env.utils import RawEnv, GameStateType
+from gym_uav.env.utils import RawEnv, GameStateType
 
-from gym_uav_my.env.config import environ_config
+from gym_uav.env.config import environ_config
 
 
 class GymUav(gym.Env):
