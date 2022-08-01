@@ -1,3 +1,4 @@
+import gc
 import os
 from copy import deepcopy
 from multiprocessing import Pool
@@ -128,5 +129,11 @@ def _train_and_get_info(param, time_steps, eval_obs_map, gpu_idx):
                 info_list.append(deepcopy(info))
                 break
     env.close()
+
+    # free memory
+    del agent
+    del env
+    torch.cuda.empty_cache()
+    gc.collect()
 
     return info_list
