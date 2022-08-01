@@ -7,6 +7,8 @@ import gym
 import numpy as np
 import torch
 
+from uav_problem import GpuResourceScheduler
+
 import gym_uav
 from ddpg_pytorch.ddpg import DDPG
 from ddpg_pytorch.utils.noise import OrnsteinUhlenbeckActionNoise
@@ -35,13 +37,10 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
         if available_devices == 'all':
             gpu_count = torch.cuda.device_count()
             available_devices = [i for i in range(gpu_count)]
-        else:
-            gpu_count = len(available_devices)
     param_list = []
-    gpu_idx = 0
+    gpu_scheduler = GpuResourceScheduler(available_devices)
     for param in params:
-        param_list.append((param, time_step, eval_obs_map, available_devices[gpu_idx]))
-        gpu_idx = (gpu_idx + 1) % gpu_count
+        param_list.append((param, time_step, eval_obs_map, gpu_scheduler))
     if num_proc > 1:
         # ensure process is killed once finished to free GPU memory
         with Pool(processes=num_proc, maxtasksperchild=1) as p:
@@ -55,8 +54,9 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
     return ret
 
 
-def _train_and_get_info(param, time_steps, eval_obs_map, gpu_idx):
+def _train_and_get_info(param, time_steps, eval_obs_map, gpu_scheduler):
     checkpoints_dir = None
+    gpu_idx = gpu_scheduler.get_gpu_id()
     device = torch.device(f'cuda:{gpu_idx}' if torch.cuda.is_available() else 'cpu')
     # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     env = gym.make(
@@ -131,10 +131,11 @@ def _train_and_get_info(param, time_steps, eval_obs_map, gpu_idx):
                 break
     env.close()
 
-    # free memory
+    # return resources and free memory
     del agent
     del env
     torch.cuda.empty_cache()
     gc.collect()
+    gpu_scheduler.return_gpu_id(gpu_idx)
 
     return info_list
