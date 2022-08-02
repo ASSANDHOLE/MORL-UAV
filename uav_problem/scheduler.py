@@ -4,12 +4,12 @@ import numpy as np
 
 
 class GpuResourceScheduler:
-    def __init__(self, available_devices, limit_per_device=None):
+    def __init__(self, available_devices, lock, limit_per_device=None):
         self.available_devices = available_devices
         self.gpu_count = len(available_devices)
         self.used_gpu = np.zeros(self.gpu_count, dtype=np.int32)
         self.limit_per_device = int(limit_per_device) if limit_per_device is not None else 999999
-        self.gpu_lock = Lock()
+        self.gpu_lock = lock
 
     def get_gpu_id(self):
         with self.gpu_lock:

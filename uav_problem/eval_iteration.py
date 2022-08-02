@@ -2,7 +2,7 @@ import gc
 import os
 import time
 from copy import deepcopy
-from multiprocessing import Pool
+from multiprocessing import Pool, Manager
 
 import gym
 import numpy as np
@@ -37,16 +37,18 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
         if available_devices == 'all':
             gpu_count = torch.cuda.device_count()
             available_devices = [i for i in range(gpu_count)]
-    param_list = []
-    gpu_scheduler = GpuResourceScheduler(available_devices, 6)
-    for param in params:
-        param_list.append((param, time_step, eval_obs_map, gpu_scheduler))
-    if num_proc > 1:
-        # ensure process is killed once finished to free GPU memory
-        with Pool(processes=num_proc, maxtasksperchild=1) as p:
-            res = p.starmap(_train_and_get_info, param_list)
-    else:
-        res = [_train_and_get_info(*param_list[0])]
+    with Manager() as man:
+        lock = man.Lock()
+        param_list = []
+        gpu_scheduler = GpuResourceScheduler(available_devices, lock, 6)
+        for param in params:
+            param_list.append((param, time_step, eval_obs_map, gpu_scheduler))
+        if num_proc > 1:
+            # ensure process is killed once finished to free GPU memory
+            with Pool(processes=num_proc, maxtasksperchild=1) as p:
+                res = p.starmap(_train_and_get_info, param_list)
+        else:
+            res = [_train_and_get_info(*param_list[0])]
     ret = []
     for re, pa in zip(res, params):
         ret.append((pa, re))
