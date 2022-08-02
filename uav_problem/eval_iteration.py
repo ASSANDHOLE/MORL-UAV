@@ -38,7 +38,7 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
             gpu_count = torch.cuda.device_count()
             available_devices = [i for i in range(gpu_count)]
     param_list = []
-    gpu_scheduler = GpuResourceScheduler(available_devices)
+    gpu_scheduler = GpuResourceScheduler(available_devices, 6)
     for param in params:
         param_list.append((param, time_step, eval_obs_map, gpu_scheduler))
     if num_proc > 1:
