@@ -13,6 +13,13 @@ crete new environment by
 
 Before running, you might want to edit the config in the [main.py](./main.py)
 
+And compile the C++ extension to speed up execution.
+
+```shell
+cd gym_uav_c_functions
+./build.sh
+```
+
 Run the experiment by:
 
 ```shell
