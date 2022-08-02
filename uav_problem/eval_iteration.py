@@ -1,5 +1,6 @@
 import gc
 import os
+import time
 from copy import deepcopy
 from multiprocessing import Pool
 
@@ -30,7 +31,6 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
     """
     assert num_proc >= 1
     assert type(num_proc) is int
-    gpu_count = 1
     if torch.cuda.is_available():
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
@@ -57,6 +57,9 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
 def _train_and_get_info(param, time_steps, eval_obs_map, gpu_scheduler):
     checkpoints_dir = None
     gpu_idx = gpu_scheduler.get_gpu_id()
+    while gpu_idx is None:
+        time.sleep(1)
+        gpu_idx = gpu_scheduler.get_gpu_id()
     device = torch.device(f'cuda:{gpu_idx}' if torch.cuda.is_available() else 'cpu')
     # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     env = gym.make(
