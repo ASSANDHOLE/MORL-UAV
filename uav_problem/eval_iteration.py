@@ -8,7 +8,7 @@ import gym
 import numpy as np
 import torch
 
-from uav_problem import GpuResourceScheduler
+from uav_problem.scheduler import GpuResourceScheduler
 
 import gym_uav
 from ddpg_pytorch.ddpg import DDPG
