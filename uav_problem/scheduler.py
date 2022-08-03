@@ -4,10 +4,13 @@ from multiprocessing.shared_memory import SharedMemory
 
 import numpy as np
 
+from gym_uav import NamedDict
 
-_NotFoundShmWrapper = object()
-_NotFoundShmWrapper.close = lambda: None
-_NotFoundShmWrapper.unlink = lambda: None
+_NotFoundShmWrapper = NamedDict({
+    'close': lambda: None,
+    'unlink': lambda: None,
+    'buf': memoryview(np.zeros(10, dtype=np.int32).tobytes())
+})
 
 
 def shm_for_name(name):
