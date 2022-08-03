@@ -56,91 +56,87 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
     return ret
 
 
-def _train_and_get_info(param, time_steps, eval_obs_map, gpu_scheduler):
+def _train_and_get_info(param, time_steps, eval_obs_map, gpu_scheduler: GpuResourceScheduler):
     checkpoints_dir = None
-    gpu_idx = gpu_scheduler.get_gpu_id()
-    while gpu_idx is None:
-        time.sleep(1)
-        gpu_idx = gpu_scheduler.get_gpu_id()
-    device = torch.device(f'cuda:{gpu_idx}' if torch.cuda.is_available() else 'cpu')
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    env = gym.make(
-        'Multi-Objective-Uav-v0',
-        size_len=30, obs_percentage=0.4,
-        obs_interval=6, obs_radius=2,
-        minimum_dist_to_destination=1,
-        sensor_max_dist=12, reward_params=param
-    )
-    env = NormalizedActions(env)
+    with gpu_scheduler.context_assign_id() as gpu_idx:
+        device = torch.device(f'cuda:{gpu_idx}' if torch.cuda.is_available() else 'cpu')
+        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        env = gym.make(
+            'Multi-Objective-Uav-v0',
+            size_len=30, obs_percentage=0.4,
+            obs_interval=6, obs_radius=2,
+            minimum_dist_to_destination=1,
+            sensor_max_dist=12, reward_params=param
+        )
+        env = NormalizedActions(env)
 
-    hidden_size = (400, 300)
-    agent = DDPG(0.99,
-                 0.001,
-                 hidden_size,
-                 env.observation_space.shape[0],
-                 env.action_space,
-                 device=device,
-                 checkpoint_dir=checkpoints_dir
-                 )
-    nb_actions = env.action_space.shape[-1]
-    ou_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions),
-                                            sigma=0.2 * np.ones(nb_actions))
-    memory = ReplayMemory(int(1e5))
-    timestep = 0
-    info_list = []
-    while timestep <= time_steps:
-        # print(timestep)
-        ou_noise.reset()
-        epoch_return = 0
-        state = torch.Tensor([env.reset()]).to(device)
-        while True:
-            action = agent.calc_action(state, ou_noise)
-            next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
-            timestep += 1
-            epoch_return += reward
+        hidden_size = (400, 300)
+        agent = DDPG(0.99,
+                     0.001,
+                     hidden_size,
+                     env.observation_space.shape[0],
+                     env.action_space,
+                     device=device,
+                     checkpoint_dir=checkpoints_dir
+                     )
+        nb_actions = env.action_space.shape[-1]
+        ou_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions),
+                                                sigma=0.2 * np.ones(nb_actions))
+        memory = ReplayMemory(int(1e5))
+        timestep = 0
+        info_list = []
+        while timestep <= time_steps:
+            # print(timestep)
+            ou_noise.reset()
+            epoch_return = 0
+            state = torch.Tensor([env.reset()]).to(device)
+            while True:
+                action = agent.calc_action(state, ou_noise)
+                next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
+                timestep += 1
+                epoch_return += reward
 
-            mask = torch.Tensor([done]).to(device)
-            reward = torch.Tensor([reward]).to(device)
-            next_state = torch.Tensor([next_state]).to(device)
+                mask = torch.Tensor([done]).to(device)
+                reward = torch.Tensor([reward]).to(device)
+                next_state = torch.Tensor([next_state]).to(device)
 
-            memory.push(state, action, mask, next_state, reward)
+                memory.push(state, action, mask, next_state, reward)
 
-            state = next_state
+                state = next_state
 
-            epoch_value_loss = 0
-            epoch_policy_loss = 0
+                epoch_value_loss = 0
+                epoch_policy_loss = 0
 
-            if len(memory) > 64:
-                transitions = memory.sample(64)
-                batch = Transition(*zip(*transitions))
-                value_loss, policy_loss = agent.update_params(batch)
+                if len(memory) > 64:
+                    transitions = memory.sample(64)
+                    batch = Transition(*zip(*transitions))
+                    value_loss, policy_loss = agent.update_params(batch)
 
-                epoch_value_loss += value_loss
-                epoch_policy_loss += policy_loss
-            if done:
-                break
+                    epoch_value_loss += value_loss
+                    epoch_policy_loss += policy_loss
+                if done:
+                    break
 
-    agent.set_eval()
+        agent.set_eval()
 
-    for i in range(len(eval_obs_map)):
-        state = torch.Tensor([env.reset(obs_map=eval_obs_map[i])]).to(device)
-        episode_return = 0
-        while True:
-            action = agent.calc_action(state, action_noise=None)
-            agent.critic(state, action)
-            next_state, reward, done, info = env.step(action.cpu().numpy()[0])
-            episode_return += reward
-            state = torch.Tensor([next_state]).to(device)
-            if done:
-                info_list.append(deepcopy(info))
-                break
-    env.close()
+        for i in range(len(eval_obs_map)):
+            state = torch.Tensor([env.reset(obs_map=eval_obs_map[i])]).to(device)
+            episode_return = 0
+            while True:
+                action = agent.calc_action(state, action_noise=None)
+                agent.critic(state, action)
+                next_state, reward, done, info = env.step(action.cpu().numpy()[0])
+                episode_return += reward
+                state = torch.Tensor([next_state]).to(device)
+                if done:
+                    info_list.append(deepcopy(info))
+                    break
+        env.close()
 
-    # return resources and free memory
-    del agent
-    del env
-    torch.cuda.empty_cache()
-    gc.collect()
-    gpu_scheduler.return_gpu_id(gpu_idx)
+        # return resources and free memory
+        del agent
+        del env
+        torch.cuda.empty_cache()
+        gc.collect()
 
     return info_list

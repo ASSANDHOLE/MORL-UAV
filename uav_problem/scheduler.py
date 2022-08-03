@@ -1,3 +1,5 @@
+import contextlib
+import time
 from multiprocessing.shared_memory import SharedMemory
 
 import numpy as np
@@ -35,8 +37,21 @@ class GpuResourceScheduler:
 
     def return_gpu_id(self, gpu_id):
         with self.gpu_lock:
+            if gpu_id not in self.available_devices:
+                return
             shm = SharedMemory(name=self.buffer_name)
             used_gpu = np.ndarray((self.gpu_count,), dtype=np.int32, buffer=shm.buf)
             idx = self.available_devices.index(gpu_id)
             used_gpu[idx] -= 1
             shm.close()
+
+    @contextlib.contextmanager
+    def context_assign_id(self):
+        gpu_id = self.get_gpu_id()
+        while gpu_id is None:
+            time.sleep(0.1)
+            gpu_id = self.get_gpu_id()
+        try:
+            yield gpu_id
+        finally:
+            self.return_gpu_id(gpu_id)
