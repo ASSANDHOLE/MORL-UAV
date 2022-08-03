@@ -40,7 +40,7 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
     with Manager() as man:
         lock = man.Lock()
         param_list = []
-        gpu_scheduler = GpuResourceScheduler(available_devices, lock, 6)
+        gpu_scheduler = GpuResourceScheduler(available_devices, lock, 5)
         for param in params:
             param_list.append((param, time_step, eval_obs_map, gpu_scheduler))
         if num_proc > 1:

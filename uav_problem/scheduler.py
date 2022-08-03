@@ -15,6 +15,12 @@ class GpuResourceScheduler:
         self.limit_per_device = int(limit_per_device) if limit_per_device is not None else 999999
         self.gpu_lock = lock
 
+    def __del__(self):
+        self.used_gpu.close()
+        shm = SharedMemory(name=self.buffer_name)
+        shm.close()
+        shm.unlink()
+
     def get_gpu_id(self):
         with self.gpu_lock:
             shm = SharedMemory(name=self.buffer_name)
