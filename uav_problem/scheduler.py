@@ -18,10 +18,13 @@ class GpuResourceScheduler:
         self.gpu_lock = lock
 
     def __del__(self):
-        self.used_gpu.close()
-        shm = SharedMemory(name=self.buffer_name)
-        shm.close()
-        shm.unlink()
+        try:
+            self.used_gpu.close()
+            shm = SharedMemory(name=self.buffer_name)
+            shm.close()
+            shm.unlink()
+        except FileNotFoundError:
+            pass
 
     def get_gpu_id(self):
         with self.gpu_lock:
