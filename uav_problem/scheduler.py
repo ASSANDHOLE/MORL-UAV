@@ -5,6 +5,19 @@ from multiprocessing.shared_memory import SharedMemory
 import numpy as np
 
 
+_NotFoundShmWrapper = object()
+_NotFoundShmWrapper.close = lambda: None
+_NotFoundShmWrapper.unlink = lambda: None
+
+
+def shm_for_name(name):
+    try:
+        shm = SharedMemory(name=name)
+        return shm
+    except FileNotFoundError:
+        return _NotFoundShmWrapper
+
+
 class GpuResourceScheduler:
     def __init__(self, available_devices, lock, limit_per_device=None):
         self.available_devices = available_devices
@@ -17,10 +30,10 @@ class GpuResourceScheduler:
         self.limit_per_device = int(limit_per_device) if limit_per_device is not None else 999999
         self.gpu_lock = lock
 
-    def __del__(self):
+    def delete(self):
         try:
             self.used_gpu.close()
-            shm = SharedMemory(name=self.buffer_name)
+            shm = shm_for_name(self.buffer_name)
             shm.close()
             shm.unlink()
         except FileNotFoundError:
@@ -28,7 +41,7 @@ class GpuResourceScheduler:
 
     def get_gpu_id(self):
         with self.gpu_lock:
-            shm = SharedMemory(name=self.buffer_name)
+            shm = shm_for_name(self.buffer_name)
             used_gpu = np.ndarray((self.gpu_count,), dtype=np.int32, buffer=shm.buf)
             min_arg = np.argmin(used_gpu)
             if used_gpu[min_arg] >= self.limit_per_device:
@@ -42,7 +55,7 @@ class GpuResourceScheduler:
         with self.gpu_lock:
             if gpu_id not in self.available_devices:
                 return
-            shm = SharedMemory(name=self.buffer_name)
+            shm = shm_for_name(self.buffer_name)
             used_gpu = np.ndarray((self.gpu_count,), dtype=np.int32, buffer=shm.buf)
             idx = self.available_devices.index(gpu_id)
             used_gpu[idx] -= 1

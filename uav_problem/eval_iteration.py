@@ -49,6 +49,9 @@ def multiprocessing_one_generation(num_proc, params, time_step, eval_obs_map, av
                 res = p.starmap(_train_and_get_info, param_list)
         else:
             res = [_train_and_get_info(*param_list[0])]
+    
+    gpu_scheduler.delete()
+
     ret = []
     for re, pa in zip(res, params):
         ret.append((pa, re))
